@@ -1,0 +1,33 @@
+import pandas as pd
+
+# Lire les fichiers CSV
+produit_df = pd.read_csv("produit.csv", dtype=str)
+canevas_df = pd.read_csv("canevas_retails.csv", dtype=str)
+
+# Renommer les colonnes pour correspondre au Data Warehouse
+canevas_df.rename(columns={"code produit": "code_produit"}, inplace=True)
+
+# Création de la dimension `dim_famille_produit`
+dim_famille_produit = produit_df[['CODE', 'LIBELLE']].copy()
+dim_famille_produit.rename(columns={"CODE": "id_famille_produit", "LIBELLE": "libelle_famille_produit"}, inplace=True)
+dim_famille_produit.drop_duplicates(inplace=True)
+
+# Création de la dimension `dim_sous_produit`
+dim_sous_produit = produit_df[['CODE', 'LIBELLE']].copy()
+dim_sous_produit.rename(columns={"CODE": "id_sous_produit", "LIBELLE": "libelle_sous_produit"}, inplace=True)
+dim_sous_produit["id_famille_produit"] = dim_sous_produit["id_sous_produit"].str[:3]  # Suppose que l'ID de famille est basé sur les 3 premiers caractères
+
+# Création de la dimension `dim_produit`
+dim_produit = produit_df[['CODE', 'LIBELLE']].copy()
+dim_produit.rename(columns={"CODE": "id_produit", "LIBELLE": "libelle_produit"}, inplace=True)
+
+# Associer `dim_produit` avec `canevas_retails` pour récupérer `code_produit`
+dim_produit = dim_produit.merge(canevas_df[['code_produit', 'CODE']], left_on="id_produit", right_on="CODE", how="left")
+dim_produit.drop(columns=["CODE"], inplace=True)
+
+# Sauvegarde en CSV
+dim_famille_produit.to_csv("dim_famille_produit.csv", index=False)
+dim_sous_produit.to_csv("dim_sous_produit.csv", index=False)
+dim_produit.to_csv("dim_produit.csv", index=False)
+
+print("ETL terminé avec succès ✅")
